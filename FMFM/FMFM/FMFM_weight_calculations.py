@@ -7,15 +7,22 @@ import numpy as np
 # 1. Define an FM–FM-like spiking neuron
 # -----------------------
 class FMFMNeuron(nn.Module):
-    def __init__(self, beta=0.95):
+    def __init__(self,delay,chosen_w1,ute = 1.01, beta=0.95):
         super().__init__()
+
+        self.beta = beta     # Decay factor
+        self.chosen_w1 = chosen_w1  # Chosen w1 for initialization
+        self.ute = ute       # Membrane potential at echo time
+        
+        self.w1, self.w2 = self.calculate_weights(delay)
+
         # 2 input channels: FM1, FM3
         self.fc = nn.Linear(2, 1, bias=False)
 
         # initialise weights so FM1 is a "priming" current,
         # FM3 is a strong trigger
         with torch.no_grad():
-            self.fc.weight[:] = torch.tensor([[0.7, 0.6]])  # [w_FM1, w_FM3]y
+            self.fc.weight[:] = torch.tensor([self.w1, self.w2])  # [w_FM1, w_FM3]
 
         # Leaky integrate-and-fire neuron
         self.lif = snn.Leaky(beta=beta)
@@ -38,6 +45,19 @@ class FMFMNeuron(nn.Module):
         spk_rec = torch.stack(spk_rec, dim=0)
         return spk_rec
 
+    def calculate_weights(self, delay):
+        """
+        Calculate the weights w1 and w2 based on the given delay.
+        This follows the manual method described in the explanation.
+        """
+        # Calculate w1: We choose w1 to be less than Uth, for simplicity, we choose w1 = chosen_w1
+        w1 = self.chosen_w1
+        
+        # Calculate w2 using the equation Ute = beta * w1^d + w2
+        # We want Ute > Uth, so we solve for w2
+        w2 = self.ute - (self.beta**delay) * (w1)
+        print(w1, w2)
+        return w1, w2
 
 def generate_pulse_echo(num_steps=50, delay=10, batch_size=1):
     """
@@ -57,11 +77,14 @@ def generate_pulse_echo(num_steps=50, delay=10, batch_size=1):
 
 # Example: test response for different delays
 device = 'cpu'
-neuron = FMFMNeuron(beta=0.9).to(device)
+target_delay = 6
+neuron = FMFMNeuron(delay=target_delay, beta=0.9,chosen_w1 = 0.7).to(device)
 
-for delay in np.linspace(1, 20,20, dtype=int):
+for delay in np.linspace(1, 10,10, dtype=int):
     spike_seq = generate_pulse_echo(delay=delay).to(device)
     spk_out = neuron(spike_seq)              # [T, 1, 1]
     total_spikes = spk_out.sum().item()
     print(f"Delay {delay} -> total spikes: {total_spikes}")
+
+
 

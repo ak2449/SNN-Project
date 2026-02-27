@@ -2,12 +2,13 @@ import torch
 import torch.nn as nn
 import snntorch as snn
 import numpy as np
+import matplotlib.pyplot as plt
 
 # -----------------------
 # FM–FM-like spiking neuron with early inhibition
 # -----------------------
 class FMFMNeuronInhib(nn.Module):
-    def __init__(self, beta_mem=0.9, beta_inh=0.6):
+    def __init__(self, beta_mem=0.6, beta_inh=0.4):
         super().__init__()
 
         # 2 input channels: FM1, FM3 (excitatory)
@@ -15,12 +16,12 @@ class FMFMNeuronInhib(nn.Module):
 
         # excitatory weights: FM1 is "priming", FM3 is strong trigger
         with torch.no_grad():
-            self.fc_exc.weight[:] = torch.tensor([[0.7,1]])  # [w_FM1, w_FM3]
+            self.fc_exc.weight[:] = torch.tensor([[-0.1729,  0.9992]])  # [w_FM1, w_FM3]
 
         # inhibitory parameters
         self.beta_inh = beta_inh
         # negative weight from inhibitory state into the neuron
-        self.w_inh = nn.Parameter(torch.tensor(-1.0))  # start around -1.0
+        self.w_inh = nn.Parameter(torch.tensor(0.0696))  # start around -1.0
 
         # Leaky integrate-and-fire neuron (you can lower threshold if needed)
         self.lif = snn.Leaky(beta=beta_mem)  # threshold defaults to 1.0
@@ -84,11 +85,12 @@ def generate_pulse_echo(num_steps=50, delay=10, batch_size=1):
     return spikes
 
 
+
 # -----------------------
 # Test response for different delays
 # -----------------------
 device = "cpu"
-neuron = FMFMNeuronInhib(beta_mem=0.7, beta_inh=0.4).to(device)
+neuron = FMFMNeuronInhib(beta_mem=0.6, beta_inh=0.4).to(device)
 
 for delay in range(1, 21):
     spike_seq = generate_pulse_echo(delay=delay).to(device)
@@ -96,4 +98,6 @@ for delay in range(1, 21):
     total_spikes = spk_out.sum().item()
     max_mem = mem_rec.max().item()
     print(f"Delay {delay:2d} -> spikes: {total_spikes:.1f}, max V_mem: {max_mem:.3f}")
+
+
 

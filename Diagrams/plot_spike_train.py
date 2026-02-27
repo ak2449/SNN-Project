@@ -40,8 +40,8 @@ def plot_spike_train(spike_seq, channel_names=None, save_path=None, title=None):
 
 if __name__ == '__main__':
     # Example usage: generate a pulse-echo with default settings
-    delay = 10
-    num_steps = 50
+    delay = 5
+    num_steps = 20
     spike_seq = generate_pulse_echo(num_steps=num_steps, delay=delay)
 
     channel_names = ["FM1 (pulse)", "FM3 (echo)"]
